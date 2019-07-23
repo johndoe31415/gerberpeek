@@ -1,0 +1,38 @@
+{
+	"definitions": {
+		"color_trace":			"#aabbcc",
+		"color_silkprint":		"#ffffff",
+		"color_pad":			"#123456",
+		"color_pcb":			"#112233"
+	},
+	"steps": [
+		{ 
+			"action": "render-layer",
+			"infile": "*.GTL",
+			"color": "$color_trace",
+			"output": "top_trace"
+		},
+		{ 
+			"action": "render-layer",
+			"infile": "*.GTP",
+			"color": "$color_trace",
+			"output": "top_pads"
+		},
+		{
+			"action": "render-layer",
+			"infile": "*.GTO",
+			"color": "$color_silkprint",
+			"output":	"top_silkprint"
+		},
+		{
+			"action": "compose",
+			"background": "$color_pcb",
+			"sources": [
+				{ "name": "top_trace" },
+				{ "name": "top_pads" },
+				{ "name": "top_silkprint" }
+			],
+			"deliverable": "top"
+		}
+	]
+}
