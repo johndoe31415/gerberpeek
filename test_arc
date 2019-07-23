@@ -1,0 +1,41 @@
+#!/usr/bin/python3
+#	gerberpeek - Render RS-274X Gerber files to image
+#	Copyright (C) 2019-2019 Johannes Bauer
+#
+#	This file is part of gerberpeek.
+#
+#	gerberpeek is free software; you can redistribute it and/or modify
+#	it under the terms of the GNU General Public License as published by
+#	the Free Software Foundation; this program is ONLY licensed under
+#	version 3 of the License, later versions are explicitly excluded.
+#
+#	gerberpeek is distributed in the hope that it will be useful,
+#	but WITHOUT ANY WARRANTY; without even the implied warranty of
+#	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#	GNU General Public License for more details.
+#
+#	You should have received a copy of the GNU General Public License
+#	along with this program.  If not, see <https://www.gnu.org/licenses/>.
+#
+#	Johannes Bauer <JohannesBauer@gmx.de>
+
+import gerber
+import math
+
+cctx = gerber.CairoContext.create_inches(gerber.Vector2d(4, 4), dpi = 300)
+a = gerber.ApertureGenerator.generate_dot(color = "red", size=2)
+
+for x in range(8):
+	a1 = (x / 8) * 2 * math.pi
+	for y in range(1, 9):
+		a2 = ((x + y) / 8) * 2 * math.pi
+		radius = 50
+		center = (2.5 * radius) * gerber.Vector2d(x + 1, y + 1)
+		start = center + radius * gerber.Vector2d.unit_angle(a1)
+		end = center + radius * gerber.Vector2d.unit_angle(a2)
+		a.blit_arc_ccw(cctx, start, end, center)
+		#a.blit_arc_ccw(cctx, end, start, center)
+
+
+cctx.write_to_png("circles.png")
+
