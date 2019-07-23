@@ -23,8 +23,11 @@ import sys
 import gerber
 
 filename = sys.argv[1]
-cctx = gerber.CairoContext.create_inches(gerber.Vector2d(5, 5), dpi = 300)
-callback = gerber.CairoCallback(cctx, src_color = (1, 0, 0))
-interpreter = gerber.Interpreter(filename, callback)
-interpreter.run()
-cctx.write_to_png("output.png")
+#cctx = gerber.CairoContext.create_inches(gerber.Vector2d(7, 7), dpi = 300)
+#callback = gerber.CairoCallback(cctx, src_color = (1, 0, 0))
+
+callback = gerber.SizeDeterminationCallback()
+gerber.Interpreter(filename, callback).run()
+dimensions = callback.max_pt - callback.min_pt
+
+#cctx.write_to_png("output.png")

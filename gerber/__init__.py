@@ -19,6 +19,6 @@
 #	Johannes Bauer <JohannesBauer@gmx.de>
 
 from .Interpreter import Interpreter
-from .InterpreterCallbacks import PrintCallback, CairoCallback
+from .InterpreterCallbacks import PrintCallback, CairoCallback, SizeDeterminationCallback
 from .CairoContext import CairoContext, ApertureGenerator
 from .Vector2d import Vector2d

@@ -31,12 +31,59 @@ class PrintCallback():
 	def __getattr__(self, key):
 		return lambda *args: self._generic_method(key, *args)
 
-class CairoCallback():
+class BaseCallback():
+	def __init__(self):
+		pass
+
+	def begin_path(self):
+		pass
+
+	def region_move(self, point):
+		pass
+
+	def region_line(self, point):
+		pass
+
+	def region_arc(self, TODO):
+		pass
+
+	def drawmode_clear(self):
+		pass
+
+	def drawmode_dark(self):
+		pass
+
+	def end_path(self):
+		pass
+
+	def close_contour(self):
+		pass
+
+	def select_aperture(self, aperture):
+		pass
+
+	def circle(self, center_pt, radius):
+		pass
+
+	def arc_ccw(self, start_pt, end_pt, center_pt):
+		pass
+
+	def arc_cw(self, start_pt, end_pt, center_pt):
+		pass
+
+	def line(self, start_pt, end_pt):
+		pass
+
+	def flash_at(self, point):
+		pass
+
+class CairoCallback(BaseCallback):
 	_MoveToCmd = collections.namedtuple("PathCommandMoveTo", [ "cmd", "coord" ])
 	_LineToCmd = collections.namedtuple("PathCommandLineTo", [ "cmd", "coord" ])
 	_ArcToCmd = collections.namedtuple("PathCommandArcTo", [ "cmd", "TODO" ])
 
 	def __init__(self, cairo_context, src_color = None):
+		BaseCallback.__init__(self)
 		self._cctx = cairo_context
 		if src_color is None:
 			self._src_color = (0, 0, 0)
@@ -104,3 +151,45 @@ class CairoCallback():
 
 	def flash_at(self, point):
 		self.line(point, point)
+
+class SizeDeterminationCallback(BaseCallback):
+	def __init__(self):
+		BaseCallback.__init__(self)
+		self._minx = None
+		self._miny = None
+		self._maxx = None
+		self._maxy = None
+		self._aperture = None
+
+	def _add_point(self, point):
+		if self._aperture is not None:
+			minpt = point - self._aperture
+			maxpt = point + self._aperture
+		else:
+			minpt = point
+			maxpt = point
+		self._minx = minpt.x if (self._minx is None) else min(self._minx, minpt.x)
+		self._miny = minpt.y if (self._miny is None) else min(self._miny, minpt.y)
+		self._maxx = maxpt.x if (self._maxx is None) else max(self._maxx, maxpt.x)
+		self._maxy = maxpt.y if (self._maxy is None) else max(self._maxy, maxpt.y)
+
+	@property
+	def min_pt(self):
+		if (self._minx is not None) and (self._miny is not None):
+			return Vector2d(self._minx, self._miny)
+		else:
+			return None
+
+	@property
+	def max_pt(self):
+		if (self._maxx is not None) and (self._maxy is not None):
+			return Vector2d(self._maxx, self._maxy)
+		else:
+			return None
+
+	def line(self, start_pt, end_pt):
+		self._add_point(start_pt)
+		self._add_point(end_pt)
+
+	def flash_at(self, point):
+		self._add_point(point)
