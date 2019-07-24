@@ -25,18 +25,21 @@ import math
 # Red base
 red = gerber.CairoContext(dimensions = gerber.Vector2d(100, 50), offset = gerber.Vector2d(100, 100), dpi = 72)
 red.fill(color = (1, 0, 0))
+red.dump("red")
 
 # Green hat
 green = gerber.CairoContext(dimensions = gerber.Vector2d(50, 50), offset = gerber.Vector2d(125, 150), dpi = 72)
 green.fill(color = (0, 1, 0))
+green.dump("green")
 
 # Blue dot
 blue = gerber.CairoContext(dimensions = gerber.Vector2d(25, 25), offset = gerber.Vector2d(200, 200), dpi = 72)
 blue.fill(color = (0, 0, 1))
+blue.dump("blue")
 
 # Compose them
 src = [ red, green, blue ]
 comp = gerber.CairoContext.create_composition_canvas(src)
-print(comp)
+comp.dump("comp")
 comp.compose_all(src)
 comp.write_to_png("composition.png")

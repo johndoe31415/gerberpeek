@@ -63,11 +63,6 @@ class CairoContext():
 		dimensions = Vector2d(maxx, maxy) - offset
 		cctx = cls(dimensions = dimensions, offset = offset, dpi = contexts[0].dpi)
 
-		# Composition canvas does NOT do coordinate translation
-		matrix = cairo.Matrix()
-		matrix.translate(-offset.x, -offset.y)
-		cctx._cctx.set_matrix(matrix)
-
 		return cctx
 
 	@property
@@ -116,7 +111,10 @@ class CairoContext():
 		self._cctx.fill()
 
 	def compose_onto(self, destination):
-		destination.cctx.set_source_surface(self.surface, self.offset.x, self.offset.y)
+#		target = self.offset - destination.offset
+		target = self.offset
+		print("blit at", target)
+		destination.cctx.set_source_surface(self.surface, target.x, target.y)
 		destination.cctx.paint()
 
 	def compose_all(self, sources):
