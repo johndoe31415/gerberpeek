@@ -45,6 +45,14 @@
 				{ "name": "drill" }
 			],
 			"deliverable": true
+		},
+		"topx": {
+			"action": "compose",
+			"background": "$color_pcb",
+			"sources": [
+				{ "name": "top_silkprint" }
+			],
+			"deliverable": true
 		}
 	}
 }

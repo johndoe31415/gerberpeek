@@ -1,0 +1,42 @@
+#!/usr/bin/python3
+#	gerberpeek - Render RS-274X Gerber files to image
+#	Copyright (C) 2019-2019 Johannes Bauer
+#
+#	This file is part of gerberpeek.
+#
+#	gerberpeek is free software; you can redistribute it and/or modify
+#	it under the terms of the GNU General Public License as published by
+#	the Free Software Foundation; this program is ONLY licensed under
+#	version 3 of the License, later versions are explicitly excluded.
+#
+#	gerberpeek is distributed in the hope that it will be useful,
+#	but WITHOUT ANY WARRANTY; without even the implied warranty of
+#	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#	GNU General Public License for more details.
+#
+#	You should have received a copy of the GNU General Public License
+#	along with this program.  If not, see <https://www.gnu.org/licenses/>.
+#
+#	Johannes Bauer <JohannesBauer@gmx.de>
+
+import gerber
+import math
+
+dpi = 300
+red = gerber.ApertureRenderer.generate_x(color = "red", size = 10, width = 1)
+green = gerber.ApertureRenderer.generate_x(color = "green", size = 10, width = 1)
+blue = gerber.ApertureRenderer.generate_x(color = "blue", size = 10, width = 1)
+red.dpi = dpi
+green.dpi = dpi
+blue.dpi = dpi
+
+cctx = gerber.CairoContext.create_inches(gerber.Vector2d(4, 4), dpi = dpi)
+red.blit_line(cctx, gerber.Vector2d(0, 0), gerber.Vector2d(1, 1), unit = "in")
+green.blit_line(cctx, gerber.Vector2d(1, 1), gerber.Vector2d(1, 2), unit = "in")
+
+cctx.write_to_png("coords.png")
+
+second = gerber.CairoContext.create_inches(gerber.Vector2d(4, 4), dpi = dpi)
+cctx.blit(second, gerber.Vector2d(0, 0), unit = "in")
+cctx.write_to_png("second.png")
+cctx.dump()

@@ -24,14 +24,13 @@ from .GeoInterpolation import GeoInterpolation
 from .Vector2d import Vector2d
 
 class CairoContext():
-	def __init__(self, dimensions, dpi, offset = None, invert_y_axis = True):
+	def __init__(self, dimensions, dpi, offset = None):
 		(width, height) = round(dimensions.x), round(dimensions.y)
 		self._surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, width, height)
 		self._cctx = cairo.Context(self._surface)
 		matrix = cairo.Matrix()
-		if invert_y_axis:
-			matrix.scale(1, -1)
-			matrix.translate(0, -height)
+		matrix.scale(1, -1)
+		matrix.translate(0, -height)
 		if offset is not None:
 			matrix.translate(-offset.x, -offset.y)
 			self._offset = offset
@@ -41,12 +40,12 @@ class CairoContext():
 		self._dpi = dpi
 
 	@classmethod
-	def create_inches(cls, dimensions_inches, dpi, offset_inches = None, invert_y_axis = True):
+	def create_inches(cls, dimensions_inches, dpi, offset_inches = None):
 		if offset_inches is None:
 			offset = None
 		else:
 			offset = offset_inches * dpi
-		return cls(dimensions = dimensions_inches * dpi, dpi = dpi, offset = offset, invert_y_axis = invert_y_axis)
+		return cls(dimensions = dimensions_inches * dpi, dpi = dpi, offset = offset)
 
 	@classmethod
 	def create_composition_canvas(cls, contexts):
@@ -62,7 +61,14 @@ class CairoContext():
 			maxy = max_pt.y if (maxy is None) else max(maxy, max_pt.y)
 		offset = Vector2d(minx, miny)
 		dimensions = Vector2d(maxx, maxy) - offset
-		return cls(dimensions = dimensions, offset = offset, dpi = contexts[0].dpi, invert_y_axis = False)
+		cctx = cls(dimensions = dimensions, offset = offset, dpi = contexts[0].dpi)
+
+		# Composition canvas does NOT do coordinate translation
+		matrix = cairo.Matrix()
+		matrix.translate(-offset.x, -offset.y)
+		cctx._cctx.set_matrix(matrix)
+
+		return cctx
 
 	@property
 	def width(self):
@@ -110,8 +116,7 @@ class CairoContext():
 		self._cctx.fill()
 
 	def compose_onto(self, destination):
-		height_diff = destination.height - self.height
-		destination.cctx.set_source_surface(self.surface, self.offset.x, self.offset.y + height_diff)
+		destination.cctx.set_source_surface(self.surface, self.offset.x, self.offset.y)
 		destination.cctx.paint()
 
 	def compose_all(self, sources):
@@ -119,7 +124,8 @@ class CairoContext():
 			source.compose_onto(self)
 
 	def blit_on_pixel(self, destination, point):
-		destination.cctx.set_source_surface(self.surface, point.x - (self.width / 2), point.y - (self.height / 2))
+		target = point - (self.dimensions / 2)
+		destination.cctx.set_source_surface(self.surface, target.x, target.y)
 		destination.cctx.paint()
 
 	def _blit_line_pixel(self, destination_ctx, start_pt, end_pt):
@@ -135,6 +141,10 @@ class CairoContext():
 			return point * self.dpi * 25.4
 		else:
 			raise NotImplementedError(unit)
+
+	def blit(self, destination_ctx, point, unit = "px"):
+		point_pixel = self._to_pixel(point, unit)
+		self.blit_on_pixel(destination_ctx, point_pixel)
 
 	def blit_line(self, destination_ctx, start_pt, end_pt, unit = "px"):
 		start_pt_pixel = self._to_pixel(start_pt, unit)
@@ -175,6 +185,15 @@ class CairoContext():
 
 	def write_to_png(self, filename):
 		self._surface.write_to_png(filename)
+
+	def dump(self, name = "CairoContext"):
+		bl_corner_px = self.offset
+		tr_corner_px = bl_corner_px + self.dimensions
+
+		bl_corner_inch = self.offset / self.dpi
+		dimensions_inch = self.dimensions / self.dpi
+		tr_corner_inch = bl_corner_inch + dimensions_inch
+		print("%s: %d x %d pixel @ %.0f dpi [%.3f x %.3f inch], lower bottom corner at %s [%s inch], top right corner at %s [%s inch]" % (name, self.width, self.height, self.dpi, dimensions_inch.x, dimensions_inch.y, self.offset, bl_corner_inch, tr_corner_px, tr_corner_inch))
 
 	def __str__(self):
 		return "CairoContext<dim %s, offs %s>" % (self.dimensions, self.offset)

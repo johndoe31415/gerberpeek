@@ -34,6 +34,7 @@ parser = FriendlyArgumentParser(description = "Render and analyze RS-274X Gerber
 parser.add_argument("-r", "--resolution", metavar = "dpi", type = float, default = 300, help = "Specifies the render resolution in dots per inch. Defaults to %(default).0f dpi.")
 parser.add_argument("-s", "--script", metavar = "filename", type = str, action = "append", default = [ ], help = "Specifies the render script or scripts, JSON files, to run. When multiple scripts are named, they can override specific settings of previous scripts, like definitions or add/change render steps. Defaults to only rendering 'renderscript.json'.")
 parser.add_argument("-o", "--outfile", metavar = "name:filename", type = nametuple, action = "append", default = [ ], help = "When deliverables should be created, names the deliverables and the filenames they should be stored in, separated by colon. Can be specified multiple times to create multiple deliverables.")
+parser.add_argument("--debug-intermediate", action = "store_true", help = "For debugging purposes, write all intermediate renderings (such as individual layers) to own files.")
 parser.add_argument("-v", "--verbose", action = "count", default = 0, help = "Increases verbosity. Can be specified multiple times to increase.")
 parser.add_argument("infile", metavar = "filename", type = str, nargs = "+", help = "Raw Gerber files that should be processed by gerberpeek")
 args = parser.parse_args(sys.argv[1:])
@@ -73,7 +74,7 @@ for (name, filename) in args.outfile:
 #renderscript.render("top_silkprint").write_to_png("3.png")
 
 output = renderscript.render("top")
-output.write_to_png("x.png")
+#output.write_to_png("x.png")
 
 #cctx = gerber.CairoContext.create_inches(gerber.Vector2d(7, 7), dpi = 300)
 #callback = gerber.CairoCallback(cctx, src_color = (1, 0, 0))

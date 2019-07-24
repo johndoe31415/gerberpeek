@@ -162,6 +162,15 @@ class Renderscript():
 			raise NotImplementedError(step["action"])
 
 	def render(self, name):
-		if name not in self._deliverables:
+		needs_render = name not in self._deliverables
+		if needs_render:
 			self._deliverables[name] = self._do_render(name)
-		return self._deliverables[name]
+
+		rendering = self._deliverables[name]
+		if self._args.debug_intermediate and needs_render and (rendering is not None):
+			# Was rendered for the first time and debugging was requested
+			filename = "debug_%s.png" % (name)
+			rendering.write_to_png(filename)
+			rendering.dump(name)
+
+		return rendering
