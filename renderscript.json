@@ -1,38 +1,50 @@
 {
 	"definitions": {
-		"color_trace":			"#aabbcc",
-		"color_silkprint":		"#ffffff",
-		"color_pad":			"#123456",
-		"color_pcb":			"#112233"
+		"color_pcb":			"#0b3b0b",
+		"color_soldermask":		"#0cb50c",
+		"color_silkprint":		"#f6f5f6",
+		"color_pad":			"#dcaa14",
+		"color_drill":			"#444244"
 	},
-	"steps": [
-		{ 
-			"action": "render-layer",
-			"infile": "*.GTL",
-			"color": "$color_trace",
-			"output": "top_trace"
+	"steps": {
+		"top_copper": { 
+			"text": "Top Copper (traces under soldermask)",
+			"action": "render-gerber",
+			"file_regex": ".*\\.gtl",
+			"file_regex_opts": [ "ignore_case" ],
+			"color": "$color_soldermask"
 		},
-		{ 
-			"action": "render-layer",
-			"infile": "*.GTP",
-			"color": "$color_trace",
-			"output": "top_pads"
+		"top_soldermask": {
+			"text": "Top Soldermask (Pads)",
+			"action": "render-gerber",
+			"file_regex": ".*\\.gts",
+			"file_regex_opts": [ "ignore_case" ],
+			"color": "$color_pad"
 		},
-		{
-			"action": "render-layer",
-			"infile": "*.GTO",
-			"color": "$color_silkprint",
-			"output":	"top_silkprint"
+		"top_silkprint": {
+			"text": "Top Silkprint",
+			"action": "render-gerber",
+			"file_regex": ".*\\.gto",
+			"file_regex_opts": [ "ignore_case" ],
+			"color": "$color_silkprint"
 		},
-		{
+		"drill": {
+			"text": "Drill holes",
+			"action": "render-drill",
+			"file_regex": ".*\\.txt",
+			"file_regex_opts": [ "ignore_case" ],
+			"color": "$color_drill"
+		},
+		"top": {
 			"action": "compose",
 			"background": "$color_pcb",
 			"sources": [
-				{ "name": "top_trace" },
-				{ "name": "top_pads" },
-				{ "name": "top_silkprint" }
+				{ "name": "top_copper" },
+				{ "name": "top_soldermask" },
+				{ "name": "top_silkprint" },
+				{ "name": "drill" }
 			],
-			"deliverable": "top"
+			"deliverable": true
 		}
-	]
+	}
 }

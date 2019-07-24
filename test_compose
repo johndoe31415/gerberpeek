@@ -1,3 +1,4 @@
+#!/usr/bin/python3
 #	gerberpeek - Render RS-274X Gerber files to image
 #	Copyright (C) 2019-2019 Johannes Bauer
 #
@@ -18,9 +19,24 @@
 #
 #	Johannes Bauer <JohannesBauer@gmx.de>
 
-from .Interpreter import Interpreter
-from .InterpreterCallbacks import PrintCallback, CairoCallback, SizeDeterminationCallback
-from .CairoContext import CairoContext
-from .Vector2d import Vector2d
-from .Renderscript import Renderscript
-from .ApertureRenderer import ApertureRenderer
+import gerber
+import math
+
+# Red base
+red = gerber.CairoContext(dimensions = gerber.Vector2d(100, 50), offset = gerber.Vector2d(100, 100), dpi = 72)
+red.fill(color = (1, 0, 0))
+
+# Green hat
+green = gerber.CairoContext(dimensions = gerber.Vector2d(50, 50), offset = gerber.Vector2d(125, 150), dpi = 72)
+green.fill(color = (0, 1, 0))
+
+# Blue dot
+blue = gerber.CairoContext(dimensions = gerber.Vector2d(25, 25), offset = gerber.Vector2d(200, 200), dpi = 72)
+blue.fill(color = (0, 0, 1))
+
+# Compose them
+src = [ red, green, blue ]
+comp = gerber.CairoContext.create_composition_canvas(src)
+print(comp)
+comp.compose_all(src)
+comp.write_to_png("composition.png")

@@ -24,19 +24,45 @@ from .GeoInterpolation import GeoInterpolation
 from .Vector2d import Vector2d
 
 class CairoContext():
-	def __init__(self, dimensions, dpi):
+	def __init__(self, dimensions, dpi, offset = None, invert_y_axis = True):
 		(width, height) = round(dimensions.x), round(dimensions.y)
 		self._surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, width, height)
 		self._cctx = cairo.Context(self._surface)
 		matrix = cairo.Matrix()
-		matrix.scale(1, -1)
-		matrix.translate(0, -height)
+		if invert_y_axis:
+			matrix.scale(1, -1)
+			matrix.translate(0, -height)
+		if offset is not None:
+			matrix.translate(-offset.x, -offset.y)
+			self._offset = offset
+		else:
+			self._offset = Vector2d(0, 0)
 		self._cctx.set_matrix(matrix)
 		self._dpi = dpi
 
 	@classmethod
-	def create_inches(cls, dimensions_inches, dpi):
-		return cls(dimensions = dimensions_inches * dpi, dpi = dpi)
+	def create_inches(cls, dimensions_inches, dpi, offset_inches = None, invert_y_axis = True):
+		if offset_inches is None:
+			offset = None
+		else:
+			offset = offset_inches * dpi
+		return cls(dimensions = dimensions_inches * dpi, dpi = dpi, offset = offset, invert_y_axis = invert_y_axis)
+
+	@classmethod
+	def create_composition_canvas(cls, contexts):
+		assert(len(contexts) > 0)
+		assert(all(context.dpi == contexts[0].dpi for context in contexts))
+		(minx, maxx, miny, maxy) = (None, None, None, None)
+		for ctx in contexts:
+			min_pt = ctx.offset
+			max_pt = ctx.offset + ctx.dimensions
+			minx = min_pt.x if (minx is None) else min(minx, min_pt.x)
+			miny = min_pt.y if (miny is None) else min(miny, min_pt.y)
+			maxx = max_pt.x if (maxx is None) else max(maxx, max_pt.x)
+			maxy = max_pt.y if (maxy is None) else max(maxy, max_pt.y)
+		offset = Vector2d(minx, miny)
+		dimensions = Vector2d(maxx, maxy) - offset
+		return cls(dimensions = dimensions, offset = offset, dpi = contexts[0].dpi, invert_y_axis = False)
 
 	@property
 	def width(self):
@@ -45,6 +71,14 @@ class CairoContext():
 	@property
 	def height(self):
 		return self.surface.get_height()
+
+	@property
+	def dimensions(self):
+		return Vector2d(self.width, self.height)
+
+	@property
+	def offset(self):
+		return self._offset
 
 	def set_mode_draw(self):
 		self._cctx.set_operator(cairo.OPERATOR_OVER)
@@ -64,11 +98,25 @@ class CairoContext():
 	def dpi(self):
 		return self._dpi
 
+	@dpi.setter
+	def dpi(self, value):
+		assert(self._dpi is None)
+		self._dpi = value
+
 	def fill(self, color):
 		(r, g, b) = color
 		self._cctx.set_source_rgb(r, g, b)
-		self._cctx.rectangle(0, 0, self.width, self.height)
+		self._cctx.rectangle(self.offset.x, self.offset.y, self.width, self.height)
 		self._cctx.fill()
+
+	def compose_onto(self, destination):
+		height_diff = destination.height - self.height
+		destination.cctx.set_source_surface(self.surface, self.offset.x, self.offset.y + height_diff)
+		destination.cctx.paint()
+
+	def compose_all(self, sources):
+		for source in sources:
+			source.compose_onto(self)
 
 	def blit_on_pixel(self, destination, point):
 		destination.cctx.set_source_surface(self.surface, point.x - (self.width / 2), point.y - (self.height / 2))
@@ -104,10 +152,6 @@ class CairoContext():
 		gip = GeoInterpolation(callback = lambda pt: self.blit_on_pixel(destination_ctx, pt))
 		gip.arc(center_pt_pixel, radius_px, start_rad, end_rad)
 
-#		ApertureGenerator.generate_x(color = "white").blit_on_pixel(destination_ctx, center_pt_pixel)
-#		ApertureGenerator.generate_x(color = "green").blit_on_pixel(destination_ctx, start_pt_pixel)
-#		ApertureGenerator.generate_x(color = "blue").blit_on_pixel(destination_ctx, end_pt_pixel)
-
 	def blit_arc_cw(self, destination_ctx, start_pt, end_pt, center_pt, unit = "px"):
 		return self.blit_arc_ccw(destination_ctx, end_pt, start_pt, center_pt, unit)
 
@@ -132,76 +176,5 @@ class CairoContext():
 	def write_to_png(self, filename):
 		self._surface.write_to_png(filename)
 
-class ApertureGenerator():
-	_COLORS = {
-		"red":		(1, 0, 0),
-		"green":	(0, 1, 0),
-		"blue":		(0, 0, 1),
-		"black":	(0, 0, 0),
-		"white":	(1, 1, 1),
-	}
-
-	@classmethod
-	def generate_x(cls, size = 5, width = 1, color = "red"):
-		size = round(size)
-		aperture = CairoContext(dimensions = Vector2d(size, size), dpi = None)
-		if color in cls._COLORS:
-			(r, g, b) = cls._COLORS.get(color)
-		else:
-			(r, g, b) = color
-		aperture.cctx.set_source_rgb(r, g, b)
-		aperture.cctx.set_line_width(width)
-		aperture.cctx.move_to(0, 0)
-		aperture.cctx.line_to(size, size)
-		aperture.cctx.stroke()
-
-		aperture.cctx.move_to(0, size)
-		aperture.cctx.line_to(size, 0)
-		aperture.cctx.stroke()
-		return aperture
-
-	@classmethod
-	def generate_dot(cls, size = 1, color = "red"):
-		aperture = CairoContext(dimensions = Vector2d(size, size), dpi = None)
-		if color in cls._COLORS:
-			(r, g, b) = cls._COLORS.get(color)
-		else:
-			(r, g, b) = color
-		aperture.cctx.set_source_rgb(r, g, b)
-		aperture.cctx.rectangle(0, 0, size, size)
-		aperture.cctx.fill()
-		return aperture
-
-
-	@classmethod
-	def generate_circular(cls):
-		pass
-
-if __name__ == "__main__":
-	aperture = CairoContext(10, 10)
-	aperture.cctx.set_source_rgb(1, 0, 0)
-	aperture.cctx.set_line_width(2)
-	aperture.cctx.move_to(1, 1)
-	aperture.cctx.line_to(9, 9)
-	aperture.cctx.stroke()
-	aperture.cctx.move_to(9, 1)
-	aperture.cctx.line_to(1, 9)
-	aperture.cctx.stroke()
-	aperture.write_to_png("a.png")
-
-	ctx = CairoContext(600, 600)
-	ctx.cctx.set_source_rgb(0, 0, 0)
-	ctx.cctx.set_line_width(10)
-
-	ctx.cctx.move_to(0, 0)
-	ctx.cctx.line_to(100, 100)
-	ctx.cctx.stroke()
-
-
-#	ctx.cctx.set_source(pat)
-#	ctx.cctx.move_to(200, 200)
-#	ctx.cctx.line_to(200+100, 200+100)
-#	ctx.cctx.stroke()
-	aperture.blit_line(ctx, 200, 200, 300, 200)
-
-	ctx.write_to_png("test.png")
+	def __str__(self):
+		return "CairoContext<dim %s, offs %s>" % (self.dimensions, self.offset)

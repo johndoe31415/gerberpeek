@@ -23,6 +23,7 @@ import cairo
 import collections
 from .CairoContext import CairoContext
 from .Vector2d import Vector2d
+from .ApertureRenderer import ApertureRenderer
 
 class PrintCallback():
 	def _generic_method(self, key, *args):
@@ -119,19 +120,7 @@ class CairoCallback(BaseCallback):
 		pass
 
 	def select_aperture(self, aperture):
-		if aperture.template == "C":
-			# Create circle aperture
-			radius_in = aperture.params / 2
-			width_height_in = 2.1 * radius_in
-			self._aperture = CairoContext.create_inches(Vector2d(width_height_in, width_height_in), dpi = self._cctx.dpi)
-			mid_pixel = self._aperture.width / 2
-			radius_pixel = radius_in * self._aperture.dpi
-			self._aperture.cctx.set_source_rgb(*self._src_color)
-			self._aperture.cctx.arc(mid_pixel, mid_pixel, radius_pixel, 0, 2 * math.pi)
-			self._aperture.cctx.fill()
-		else:
-			# TODO
-			pass
+		self._aperture = ApertureRenderer.from_definition(aperture, dpi = self._cctx.dpi, color = self._src_color)
 
 	def circle(self, center_pt, radius):
 		if self._aperture is not None:
@@ -159,7 +148,7 @@ class SizeDeterminationCallback(BaseCallback):
 		self._miny = None
 		self._maxx = None
 		self._maxy = None
-		self._aperture = None
+		self._aperture = Vector2d(0.2, 0.2)
 
 	def _add_point(self, point):
 		if self._aperture is not None:

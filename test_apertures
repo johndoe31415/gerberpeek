@@ -1,0 +1,55 @@
+#!/usr/bin/python3
+#	gerberpeek - Render RS-274X Gerber files to image
+#	Copyright (C) 2019-2019 Johannes Bauer
+#
+#	This file is part of gerberpeek.
+#
+#	gerberpeek is free software; you can redistribute it and/or modify
+#	it under the terms of the GNU General Public License as published by
+#	the Free Software Foundation; this program is ONLY licensed under
+#	version 3 of the License, later versions are explicitly excluded.
+#
+#	gerberpeek is distributed in the hope that it will be useful,
+#	but WITHOUT ANY WARRANTY; without even the implied warranty of
+#	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#	GNU General Public License for more details.
+#
+#	You should have received a copy of the GNU General Public License
+#	along with this program.  If not, see <https://www.gnu.org/licenses/>.
+#
+#	Johannes Bauer <JohannesBauer@gmx.de>
+
+import gerber
+import math
+
+cctx = gerber.CairoContext.create_inches(gerber.Vector2d(4, 4), dpi = 300)
+
+y = 100
+gerber.ApertureRenderer.generate_x(color = "red", size = 10, width = 1).blit_on_pixel(cctx, point = gerber.Vector2d(100, y))
+gerber.ApertureRenderer.generate_x(color = "red", size = 20, width = 5).blit_on_pixel(cctx, point = gerber.Vector2d(150, y))
+gerber.ApertureRenderer.generate_x(color = "red", size = 50, width = 10).blit_on_pixel(cctx, point = gerber.Vector2d(200, y))
+
+y = 200
+gerber.ApertureRenderer.generate_rectangular(color = "green", width = 10, height = 20).blit_on_pixel(cctx, point = gerber.Vector2d(100, y))
+gerber.ApertureRenderer.generate_rectangular(color = "green", width = 10, height = 30).blit_on_pixel(cctx, point = gerber.Vector2d(150, y))
+gerber.ApertureRenderer.generate_rectangular(color = "green", width = 10, height = 40).blit_on_pixel(cctx, point = gerber.Vector2d(200, y))
+gerber.ApertureRenderer.generate_rectangular(color = "green", width = 20, height = 40).blit_on_pixel(cctx, point = gerber.Vector2d(250, y))
+
+y = 300
+gerber.ApertureRenderer.generate_obround(color = "green", width = 10, height = 15).blit_on_pixel(cctx, point = gerber.Vector2d(100, y))
+gerber.ApertureRenderer.generate_obround(color = "green", width = 10, height = 20).blit_on_pixel(cctx, point = gerber.Vector2d(150, y))
+gerber.ApertureRenderer.generate_obround(color = "green", width = 10, height = 30).blit_on_pixel(cctx, point = gerber.Vector2d(200, y))
+gerber.ApertureRenderer.generate_obround(color = "green", width = 20, height = 30).blit_on_pixel(cctx, point = gerber.Vector2d(250, y))
+gerber.ApertureRenderer.generate_obround(color = "green", width = 15, height = 10).blit_on_pixel(cctx, point = gerber.Vector2d(300, y))
+gerber.ApertureRenderer.generate_obround(color = "green", width = 20, height = 10).blit_on_pixel(cctx, point = gerber.Vector2d(350, y))
+gerber.ApertureRenderer.generate_obround(color = "green", width = 30, height = 10).blit_on_pixel(cctx, point = gerber.Vector2d(400, y))
+gerber.ApertureRenderer.generate_obround(color = "green", width = 30, height = 20).blit_on_pixel(cctx, point = gerber.Vector2d(450, y))
+gerber.ApertureRenderer.generate_obround(color = "green", width = 20, height = 20).blit_on_pixel(cctx, point = gerber.Vector2d(500, y))
+
+y = 400
+gerber.ApertureRenderer.generate_circular(color = "blue", radius = 5).blit_on_pixel(cctx, point = gerber.Vector2d(100, y))
+gerber.ApertureRenderer.generate_circular(color = "blue", radius = 6).blit_on_pixel(cctx, point = gerber.Vector2d(150, y))
+gerber.ApertureRenderer.generate_circular(color = "blue", radius = 10).blit_on_pixel(cctx, point = gerber.Vector2d(200, y))
+gerber.ApertureRenderer.generate_circular(color = "blue", radius = 20).blit_on_pixel(cctx, point = gerber.Vector2d(250, y))
+
+cctx.write_to_png("apertures.png")

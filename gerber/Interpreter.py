@@ -39,22 +39,10 @@ class QuadrantMode(enum.IntEnum):
 
 class EndOfFile(Exception): pass
 
-class Aperture():
-	def __init__(self, template, params, unit):
-		assert(unit == Unit.Inch)
+class ApertureDefinition():
+	def __init__(self, template, params):
 		self._template = template
-		if self._template == "C":
-			# Circle with radius
-			self._params = float(params)
-		elif self._template == "R":
-			# Rectangle
-			self._params = tuple(float(x) for x in params.split("X", maxsplit = 1))
-		elif self._template == "O":
-			# Obround
-			self._params = tuple(float(x) for x in params.split("X", maxsplit = 1))
-		else:
-			raise NotImplementedError(self._template)
-		self._unit = unit
+		self._params = params
 
 	@property
 	def template(self):
@@ -73,13 +61,14 @@ class Interpreter():
 		("set_unit", re.compile(r"%MO(?P<unit>IN|MM)\*%")),
 		("set_precision", re.compile(r"%FSLAX(?P<xi>\d)(?P<xd>\d)Y(?P<yi>\d)(?P<yd>\d)\*%")),
 		("add_aperture", re.compile(r"%ADD(?P<d>\d{2})(?P<template>[^,]+),(?P<params>.*)\*%")),
-		("move_cmd", re.compile(r"(X(?P<x>-?\d+))?(Y(?P<y>-?\d+))?(I(?P<i>-?\d+))?(J(?P<j>-?\d+))?D(?P<d>\d+)\*")),
+		("cmd", re.compile(r"(?P<cmds>[-GDXYIJ0-9]+)\*")),
 		("key_value", re.compile(r"G04 (?P<key>\w+)=(?P<value>\w+)\*")),
-		("G", re.compile(r"G(?P<g>\d+)\*")),
+		("comment", re.compile(r"G04\s(?P<comment>.*)\*")),
 		("M", re.compile(r"M(?P<m>\d+)\*")),
 		("load_polarity", re.compile(r"%LP(?P<pol>[CD])\*%")),
-		("comment", re.compile(r"%(?P<comment>.*)")),
+		("not_implemented", re.compile(r"(?P<unknown_command>%.*)")),
 	)))
+	_CMD_RE = re.compile("(?P<cmdcode>[A-Z])(?P<parameter>-?[0-9]+)")
 
 	def __init__(self, filename, callback):
 		self._filename = filename
@@ -91,6 +80,7 @@ class Interpreter():
 		self._precision = { "x": None, "y": None }
 		self._apertures = { }
 		self._region = False
+		self._properties = { }
 
 	def _begin_region(self):
 		assert(not self._region)
@@ -129,6 +119,9 @@ class Interpreter():
 		else:
 			raise NotImplementedError(self._unit)
 
+	def _match_not_implemented(self, match):
+		print(match)
+
 	def _match_load_polarity(self, match):
 		pol = match["pol"]
 		if pol == "C":
@@ -138,14 +131,37 @@ class Interpreter():
 			# Dark
 			self._callback.drawmode_dark()
 
-	def _match_move_cmd(self, match):
-		x = self._convert(match["x"], self._precision["x"])
-		y = self._convert(match["y"], self._precision["y"])
-		i = self._convert(match["i"], self._precision["x"])
-		j = self._convert(match["j"], self._precision["y"])
+	def _match_cmd(self, match):
+		orig_cmds = match["cmds"]
+		remaining = orig_cmds
+
+		parameters = { }
+		while len(remaining) > 0:
+			match = self._CMD_RE.match(remaining)
+			if not match:
+				raise Exception("Could not match remaining '%s' in '%s'." % (remaining, orig_cmds))
+			cmd = match.groupdict()
+			remaining = remaining[match.span()[1]: ]
+
+			cmdcode = cmd["cmdcode"]
+			param = cmd["parameter"]
+			if cmdcode == "G":
+				self._execute_G(int(param))
+			elif cmdcode == "D":
+				parameters[cmdcode] = param
+				self._execute_D(parameters)
+				parameters = { }
+			else:
+				parameters[cmdcode] = param
+
+	def _execute_D(self, match):
+		x = self._convert(match.get("X"), self._precision["x"])
+		y = self._convert(match.get("Y"), self._precision["y"])
+		i = self._convert(match.get("I"), self._precision["x"])
+		j = self._convert(match.get("J"), self._precision["y"])
 		xy = Vector2d(self._to_inches(x) if x is not None else self._pos.x, self._to_inches(y) if y is not None else self._pos.y)
 		ij = Vector2d(self._to_inches(i) if i is not None else 0, self._to_inches(j) if j is not None else 0)
-		d = int(match["d"])
+		d = int(match["D"])
 		if self._interpolation == InterpolationMode.Linear:
 			if d == 1:
 				if not self._region:
@@ -180,10 +196,13 @@ class Interpreter():
 
 
 	def _match_key_value(self, match):
-		print(match)
+		(key, value) = (match["key"], match["value"])
+		self._properties[key] = value
 
 	def _match_add_aperture(self, match):
-		aperture = Aperture(template = match["template"], params = match["params"], unit = self._unit)
+		template = match["template"]
+		params = tuple(self._to_inches(float(value)) for value in match["params"].split("X"))
+		aperture = ApertureDefinition(template = template, params = params)
 		d = int(match["d"])
 		self._apertures[d] = aperture
 
@@ -195,8 +214,7 @@ class Interpreter():
 		else:
 			print(match)
 
-	def _match_G(self, match):
-		g = int(match["g"])
+	def _execute_G(self, g):
 		if g in [ 1, 2, 3 ]:
 			self._interpolation = InterpolationMode(g)
 		elif g in [ 70, 71 ]:
@@ -209,6 +227,11 @@ class Interpreter():
 			self._end_region()
 		else:
 			print(match)
+
+	def _match_G(self, match):
+		self._execute_G(int(match["g1"]))
+		if match["g2"] is not None:
+			self._execute_G(int(match["g2"]))
 
 	def _match_D(self, match):
 		# Set aperture
