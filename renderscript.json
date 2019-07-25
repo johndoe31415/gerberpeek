@@ -7,24 +7,52 @@
 		"color_drill":			"#444244"
 	},
 	"steps": {
-		"top_copper": { 
-			"text": "Top Copper (traces under soldermask)",
+		"top_copper_masked": {
+			"text": "Top Copper (traces)",
 			"action": "render-gerber",
 			"file_regex": ".*\\.gtl",
 			"file_regex_opts": [ "ignore_case" ],
 			"color": "$color_soldermask"
 		},
+		"top_copper_exposed": {
+			"text": "Top Copper exposed (pads)",
+			"action": "render-gerber",
+			"file_regex": ".*\\.gtl",
+			"file_regex_opts": [ "ignore_case" ],
+			"color": "$color_pad"
+		},
 		"top_soldermask": {
-			"text": "Top Soldermask (Pads)",
+			"text": "Top Soldermask (areas where copper is exposed)",
 			"action": "render-gerber",
 			"file_regex": ".*\\.gts",
 			"file_regex_opts": [ "ignore_case" ],
-			"color": "$color_pad"
+			"color": "#ff0000"
 		},
 		"top_silkprint": {
 			"text": "Top Silkprint",
 			"action": "render-gerber",
 			"file_regex": ".*\\.gto",
+			"file_regex_opts": [ "ignore_case" ],
+			"color": "$color_silkprint"
+		},
+		"bottom_copper": {
+			"text": "Bottom Copper (traces and pads)",
+			"action": "render-gerber",
+			"file_regex": ".*\\.gbl",
+			"file_regex_opts": [ "ignore_case" ],
+			"color": "$color_soldermask"
+		},
+		"bottom_soldermask": {
+			"text": "Bottom Soldermask (areas where copper is exposed)",
+			"action": "render-gerber",
+			"file_regex": ".*\\.gbs",
+			"file_regex_opts": [ "ignore_case" ],
+			"color": "$color_pad"
+		},
+		"bottom_silkprint": {
+			"text": "Bottom Silkprint",
+			"action": "render-gerber",
+			"file_regex": ".*\\.gbo",
 			"file_regex_opts": [ "ignore_case" ],
 			"color": "$color_silkprint"
 		},
@@ -35,22 +63,35 @@
 			"file_regex_opts": [ "ignore_case" ],
 			"color": "$color_drill"
 		},
+		"top_pads": {
+			"action": "compose",
+			"invert_y_axis": false,
+			"sources": [
+				{ "name": "top_copper_exposed" },
+				{ 	"name": "top_soldermask",
+					"operator": "dest-in"
+				}
+			]
+		},
 		"top": {
 			"action": "compose",
 			"background": "$color_pcb",
 			"sources": [
-				{ "name": "top_copper" },
-				{ "name": "top_soldermask" },
+				{ "name": "top_copper_masked" },
+				{ "name": "top_pads" },
 				{ "name": "top_silkprint" },
 				{ "name": "drill" }
 			],
 			"deliverable": true
 		},
-		"topx": {
+		"bottom": {
 			"action": "compose",
 			"background": "$color_pcb",
 			"sources": [
-				{ "name": "top_silkprint" }
+				{ "name": "bottom_copper" },
+				{ "name": "bottom_soldermask" },
+				{ "name": "bottom_silkprint" },
+				{ "name": "drill" }
 			],
 			"deliverable": true
 		}

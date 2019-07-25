@@ -73,9 +73,6 @@ for (name, filename) in args.outfile:
 #renderscript.render("top_soldermask").write_to_png("2.png")
 #renderscript.render("top_silkprint").write_to_png("3.png")
 
+#output = renderscript.render("top")
+#output = renderscript.render("bottom")
 output = renderscript.render("top")
-#output.write_to_png("x.png")
-
-#cctx = gerber.CairoContext.create_inches(gerber.Vector2d(7, 7), dpi = 300)
-#callback = gerber.CairoCallback(cctx, src_color = (1, 0, 0))
-#cctx.write_to_png("output.png")

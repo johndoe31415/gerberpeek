@@ -25,13 +25,6 @@ from .CairoContext import CairoContext
 from .Vector2d import Vector2d
 from .ApertureRenderer import ApertureRenderer
 
-class PrintCallback():
-	def _generic_method(self, key, *args):
-		print(key, args)
-
-	def __getattr__(self, key):
-		return lambda *args: self._generic_method(key, *args)
-
 class BaseCallback():
 	def __init__(self):
 		pass
@@ -60,7 +53,7 @@ class BaseCallback():
 	def close_contour(self):
 		pass
 
-	def select_aperture(self, aperture):
+	def select_aperture(self, aperture_def):
 		pass
 
 	def circle(self, center_pt, radius):
@@ -78,6 +71,12 @@ class BaseCallback():
 	def flash_at(self, point):
 		pass
 
+	def drill(self, point):
+		pass
+
+	def switch_drill_tool(self, diameter):
+		pass
+
 class CairoCallback(BaseCallback):
 	_MoveToCmd = collections.namedtuple("PathCommandMoveTo", [ "cmd", "coord" ])
 	_LineToCmd = collections.namedtuple("PathCommandLineTo", [ "cmd", "coord" ])
@@ -91,6 +90,7 @@ class CairoCallback(BaseCallback):
 		else:
 			self._src_color = src_color
 		self._aperture = None
+		self._drill = None
 		self._path = [ ]
 
 	def begin_path(self):
@@ -119,8 +119,8 @@ class CairoCallback(BaseCallback):
 	def close_contour(self):
 		pass
 
-	def select_aperture(self, aperture):
-		self._aperture = ApertureRenderer.from_definition(aperture, dpi = self._cctx.dpi, color = self._src_color)
+	def select_aperture(self, aperture_def):
+		self._aperture = ApertureRenderer.from_definition(aperture_def, dpi = self._cctx.dpi, color = self._src_color)
 
 	def circle(self, center_pt, radius):
 		if self._aperture is not None:
@@ -141,6 +141,12 @@ class CairoCallback(BaseCallback):
 	def flash_at(self, point):
 		self.line(point, point)
 
+	def drill(self, point):
+		self._drill.blit(self._cctx, point, unit = "in")
+
+	def switch_drill_tool(self, diameter):
+		self._drill = ApertureRenderer.from_raw_definition(aperture_definition_template = "C", aperture_definition_params = (diameter, ), dpi = self._cctx.dpi, color = self._src_color)
+
 class SizeDeterminationCallback(BaseCallback):
 	def __init__(self):
 		BaseCallback.__init__(self)
@@ -148,7 +154,7 @@ class SizeDeterminationCallback(BaseCallback):
 		self._miny = None
 		self._maxx = None
 		self._maxy = None
-		self._aperture = Vector2d(0.2, 0.2)
+		self._aperture = None
 
 	def _add_point(self, point):
 		if self._aperture is not None:
@@ -182,3 +188,12 @@ class SizeDeterminationCallback(BaseCallback):
 
 	def flash_at(self, point):
 		self._add_point(point)
+
+	def select_aperture(self, aperture_def):
+		self._aperture = ApertureRenderer.physical_extents(aperture_def) / 2
+
+	def drill(self, point):
+		self._add_point(point)
+
+	def switch_drill_tool(self, diameter):
+		self._aperture = Vector2d(diameter, diameter) / 2

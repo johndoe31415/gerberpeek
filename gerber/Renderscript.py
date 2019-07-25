@@ -21,7 +21,7 @@
 import re
 import json
 import sys
-from gerber import Vector2d, CairoContext, CairoCallback, Interpreter, SizeDeterminationCallback
+from gerber import Vector2d, CairoContext, CairoCallback, Interpreter, DrillInterpreter, SizeDeterminationCallback
 
 class RenderscriptSyntaxError(Exception): pass
 class RenderscriptRenderError(Exception): pass
@@ -110,44 +110,70 @@ class Renderscript():
 		match = match.groupdict()
 		return (int(match["r"], 16) / 255, int(match["g"], 16) / 255, int(match["b"], 16) / 255)
 
-	def _render_gerber(self, step):
+	def _apply_postprocess_steps(self, cctx, postproc_steps):
+		for postproc_step in postproc_steps:
+			if postproc_step == "alpha-polarize":
+				cctx.alpha_polarize(30)
+			else:
+				raise NotImplementedError(postproc_step)
+		return cctx
+
+	def _render_generic(self, step, interpreter_class):
 		infile = self._find_file(step["file_regex"], step.get("file_regex_opts"))
 		if infile is None:
 			return None
 		if self._args.verbose >= 2:
-			print("Rendering %s" % (infile), file = sys.stderr)
+			print("Rendering %s using %s" % (infile, interpreter_class.__name__), file = sys.stderr)
 
 		src_color = self._parse_color(self._replace_definitions(step.get("color", "#000000")))
 
 		# Determine dimensions first
 		size_cb = SizeDeterminationCallback()
-		Interpreter(infile, size_cb).run()
+		interpreter_class(infile, size_cb).run()
+		if (size_cb.max_pt is None) or (size_cb.min_pt is None):
+			# No content here.
+			return None
+
 		dimensions = size_cb.max_pt - size_cb.min_pt
 		if self._args.verbose >= 2:
 			print("%s: dimensions %s to %s size %s" % (infile, size_cb.min_pt, size_cb.max_pt, dimensions), file = sys.stderr)
 
 		cctx = CairoContext.create_inches(dimensions, offset_inches = size_cb.min_pt, dpi = self._args.resolution)
+		if "background" in step:
+			bg_color = self._parse_color(step["background"])
+			cctx.fill(bg_color)
+
 		callback = CairoCallback(cctx, src_color = src_color)
-		Interpreter(infile, callback).run()
+		interpreter_class(infile, callback).run()
+
+		if "postprocess" in step:
+			cctx = self._apply_postprocess_steps(cctx, step["postprocess"])
 		return cctx
 
+	def _render_gerber(self, step):
+		return self._render_generic(step, Interpreter)
+
 	def _render_drill(self, step):
-		pass
+		return self._render_generic(step, DrillInterpreter)
 
 	def _render_compose(self, step):
-		sub_ctxts = [ ]
+		layers = [ ]
 		for source in step["sources"]:
 			sub_ctx = self.render(source["name"])
 			if sub_ctx is None:
 				print("Warning: Unable to render source '%s', ignoring it." % (source["name"]))
 				continue
 			else:
-				sub_ctxts.append(sub_ctx)
-
-		bg_color = self._parse_color(self._replace_definitions(step.get("background", "#ffffff")))
-		cctx = CairoContext.create_composition_canvas(sub_ctxts)
-		cctx.fill(bg_color)
-		cctx.compose_all(sub_ctxts)
+				layers.append({
+					"source":	source,
+					"ctx":		sub_ctx,
+				})
+		cctx = CairoContext.create_composition_canvas([ layer["ctx"] for layer in layers ], invert_y_axis = step.get("invert_y_axis", True))
+		if "background" in step:
+			bg_color = self._parse_color(self._replace_definitions(step["background"]))
+			cctx.fill(bg_color)
+		for layer in layers:
+			layer["ctx"].compose_onto(cctx, operator = layer["source"].get("operator", "over"))
 		return cctx
 
 	def _do_render(self, name):

@@ -24,19 +24,22 @@ from .GeoInterpolation import GeoInterpolation
 from .Vector2d import Vector2d
 
 class CairoContext():
-	def __init__(self, dimensions, dpi, offset = None):
-		(width, height) = round(dimensions.x), round(dimensions.y)
-		self._surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, width, height)
+	def __init__(self, dimensions, dpi, offset = None, surface = None):
+		if surface is None:
+			(width, height) = round(dimensions.x), round(dimensions.y)
+			self._surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, width, height)
+		else:
+			self._surface = surface
 		self._cctx = cairo.Context(self._surface)
-		matrix = cairo.Matrix()
-		matrix.scale(1, -1)
-		matrix.translate(0, -height)
+		self._cctx.set_line_width(0)
+		self._cctx.set_antialias(cairo.ANTIALIAS_BEST)
 		if offset is not None:
+			matrix = cairo.Matrix()
 			matrix.translate(-offset.x, -offset.y)
+			self._cctx.set_matrix(matrix)
 			self._offset = offset
 		else:
 			self._offset = Vector2d(0, 0)
-		self._cctx.set_matrix(matrix)
 		self._dpi = dpi
 
 	@classmethod
@@ -48,7 +51,7 @@ class CairoContext():
 		return cls(dimensions = dimensions_inches * dpi, dpi = dpi, offset = offset)
 
 	@classmethod
-	def create_composition_canvas(cls, contexts):
+	def create_composition_canvas(cls, contexts, invert_y_axis = True):
 		assert(len(contexts) > 0)
 		assert(all(context.dpi == contexts[0].dpi for context in contexts))
 		(minx, maxx, miny, maxy) = (None, None, None, None)
@@ -63,6 +66,12 @@ class CairoContext():
 		dimensions = Vector2d(maxx, maxy) - offset
 		cctx = cls(dimensions = dimensions, offset = offset, dpi = contexts[0].dpi)
 
+		matrix = cairo.Matrix()
+		if invert_y_axis:
+			matrix.scale(1, -1)
+			matrix.translate(0, -cctx.height)
+		matrix.translate(-cctx.offset.x, -cctx.offset.y)
+		cctx.cctx.set_matrix(matrix)
 		return cctx
 
 	@property
@@ -110,12 +119,27 @@ class CairoContext():
 		self._cctx.rectangle(self.offset.x, self.offset.y, self.width, self.height)
 		self._cctx.fill()
 
-	def compose_onto(self, destination):
-#		target = self.offset - destination.offset
+	def compose_onto(self, destination, operator = "over"):
 		target = self.offset
-		print("blit at", target)
-		destination.cctx.set_source_surface(self.surface, target.x, target.y)
+
+#		saved_matrix = destination.cctx.get_matrix()
+#		matrix = cairo.Matrix()
+#		matrix.translate(-destination.offset.x, -destination.offset.y)
+#		matrix.translate(0, destination.height - self.height)
+#		destination.cctx.set_matrix(matrix)
+
+		destination.cctx.set_operator({
+			"over":		cairo.OPERATOR_OVER,
+			"xor":		cairo.OPERATOR_XOR,
+			"multiply":	cairo.OPERATOR_MULTIPLY,
+			"in":		cairo.OPERATOR_IN,
+			"out":		cairo.OPERATOR_OUT,
+			"dest-in":	cairo.OPERATOR_DEST_IN,
+			"dest-out":	cairo.OPERATOR_DEST_OUT,
+		}[operator])
+		destination.cctx.set_source_surface(self.surface, self.offset.x, self.offset.y)
 		destination.cctx.paint()
+#		destination.cctx.set_matrix(saved_matrix)
 
 	def compose_all(self, sources):
 		for source in sources:
@@ -181,8 +205,29 @@ class CairoContext():
 				self._cctx.line_to(point.x, point.y)
 		self._cctx.fill()
 
+	def alpha_polarize(self, threshold):
+		assert(self._surface.get_format() == cairo.FORMAT_ARGB32)
+		data = self._surface.get_data()
+		for offset in range(0, len(self._surface.get_data()), 4):
+			alpha = data[offset + 3]
+			if alpha > threshold:
+				data[offset + 0] = 0x00
+				data[offset + 1] = 0x00
+				data[offset + 2] = 0xff
+				data[offset + 3] = 0xff
+			else:
+				data[offset + 0] = 0x00
+				data[offset + 1] = 0x00
+				data[offset + 2] = 0x00
+				data[offset + 3] = 0x00
+
 	def write_to_png(self, filename):
 		self._surface.write_to_png(filename)
+
+	@classmethod
+	def read_from_png(cls, filename):
+		surface = cairo.ImageSurface.create_from_png(filename)
+		return cls(dimensions = None, dpi = None, offset = None, surface = surface)
 
 	def dump(self, name = "CairoContext"):
 		bl_corner_px = self.offset

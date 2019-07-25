@@ -18,10 +18,9 @@
 #
 #	Johannes Bauer <JohannesBauer@gmx.de>
 
-from .Interpreter import Interpreter
-from .DrillInterpreter import DrillInterpreter
-from .InterpreterCallbacks import CairoCallback, SizeDeterminationCallback
-from .CairoContext import CairoContext
-from .Vector2d import Vector2d
-from .Renderscript import Renderscript
-from .ApertureRenderer import ApertureRenderer
+class PrintCallback():
+	def _generic_method(self, key, *args):
+		print(key, args)
+
+	def __getattr__(self, key):
+		return lambda *args: self._generic_method(key, *args)

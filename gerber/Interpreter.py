@@ -61,6 +61,8 @@ class Interpreter():
 		("set_unit", re.compile(r"%MO(?P<unit>IN|MM)\*%")),
 		("set_precision", re.compile(r"%FSLAX(?P<xi>\d)(?P<xd>\d)Y(?P<yi>\d)(?P<yd>\d)\*%")),
 		("add_aperture", re.compile(r"%ADD(?P<d>\d{2})(?P<template>[^,]+),(?P<params>.*)\*%")),
+		("img_polarity", re.compile(r"%IP(?P<pol>POS|NEG)\*%")),
+		("offset", re.compile(r"%OFA(?P<a>\d+(\.\d+)?)B(?P<b>\d+(\.\d+)?)\*%")),
 		("cmd", re.compile(r"(?P<cmds>[-GDXYIJ0-9]+)\*")),
 		("key_value", re.compile(r"G04 (?P<key>\w+)=(?P<value>\w+)\*")),
 		("comment", re.compile(r"G04\s(?P<comment>.*)\*")),
@@ -121,6 +123,10 @@ class Interpreter():
 
 	def _match_not_implemented(self, match):
 		print(match)
+
+	def _match_img_polarity(self, match):
+		if match["pol"] != "POS":
+			print("Warning: Non-positive image polarity is unsupported.")
 
 	def _match_load_polarity(self, match):
 		pol = match["pol"]
@@ -194,6 +200,10 @@ class Interpreter():
 		else:
 			raise NotImplementedError(self._interpolation, self._quadrantmode, match)
 
+	def _match_offset(self, match):
+		(a, b) = (float(match["a"]), float(match["b"]))
+		if (a != 0) or (b != 0):
+			print("Warning: Image offset requested as %.3f, %.3f. Not implemented." % (a, b))
 
 	def _match_key_value(self, match):
 		(key, value) = (match["key"], match["value"])

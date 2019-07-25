@@ -79,7 +79,6 @@ class ApertureRenderer():
 		else:
 			(r, g, b) = color
 		aperture.cctx.set_source_rgb(r, g, b)
-
 		if height < width:
 			# Horizontal obround
 			aperture.cctx.rectangle(radius + padding, padding, width - (2 * radius), height)
@@ -111,23 +110,41 @@ class ApertureRenderer():
 		return aperture
 
 	@classmethod
-	def from_definition(cls, aperture_definition, dpi, color):
-		if aperture_definition.template == "C":
+	def from_raw_definition(cls, aperture_definition_template, aperture_definition_params, dpi, color):
+		if aperture_definition_template == "C":
 			# Circular aperture
-			radius_in = aperture_definition.params[0] / 2
+			radius_in = aperture_definition_params[0] / 2
 			radius_px = radius_in * dpi
 			aperture = cls.generate_circular(radius_px, color = color)
-		elif aperture_definition.template == "O":
+		elif aperture_definition_template == "O":
 			# Obround aperture
-			width_px = aperture_definition.params[0] * dpi
-			height_px = aperture_definition.params[1] * dpi
+			width_px = aperture_definition_params[0] * dpi
+			height_px = aperture_definition_params[1] * dpi
 			aperture = cls.generate_obround(width_px, height_px, color = color)
-		elif aperture_definition.template == "R":
+		elif aperture_definition_template == "R":
 			# Rectangular aperture
-			width_px = aperture_definition.params[0] * dpi
-			height_px = aperture_definition.params[1] * dpi
+			width_px = aperture_definition_params[0] * dpi
+			height_px = aperture_definition_params[1] * dpi
 			aperture = cls.generate_rectangular(width_px, height_px, color = color)
 		else:
-			raise NotImplementedError(aperture_definition)
+			raise NotImplementedError(aperture_definition_template)
 		aperture.dpi = dpi
 		return aperture
+
+	@classmethod
+	def from_definition(cls, aperture_definition, dpi, color):
+		return cls.from_raw_definition(aperture_definition.template, aperture_definition.params, dpi, color)
+
+	@classmethod
+	def physical_extents(cls, aperture_definition):
+		if aperture_definition.template == "C":
+			# Circular aperture
+			diameter_in = aperture_definition.params[0]
+			return Vector2d(diameter_in, diameter_in)
+		elif aperture_definition.template in [ "O", "R" ]:
+			# Obround or rectangular aperture
+			width_in = aperture_definition.params[0]
+			height_in = aperture_definition.params[1]
+			return Vector2d(width_in, height_in)
+		else:
+			raise NotImplementedError(aperture_definition)
