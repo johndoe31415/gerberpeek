@@ -20,6 +20,7 @@
 #	Johannes Bauer <JohannesBauer@gmx.de>
 
 import sys
+import os
 import gerber
 import argparse
 from FriendlyArgumentParser import FriendlyArgumentParser
@@ -31,12 +32,13 @@ def nametuple(text):
 	return splittext
 
 parser = FriendlyArgumentParser(description = "Render and analyze RS-274X Gerber files.")
-parser.add_argument("-r", "--resolution", metavar = "dpi", type = float, default = 300, help = "Specifies the render resolution in dots per inch. Defaults to %(default).0f dpi.")
+parser.add_argument("-d", "--resolution", metavar = "dpi", type = float, default = 300, help = "Specifies the render resolution in dots per inch. Defaults to %(default).0f dpi.")
 parser.add_argument("-s", "--script", metavar = "filename", type = str, action = "append", default = [ ], help = "Specifies the render script or scripts, JSON files, to run. When multiple scripts are named, they can override specific settings of previous scripts, like definitions or add/change render steps. Defaults to only rendering 'renderscript.json'.")
 parser.add_argument("-o", "--outfile", metavar = "name:filename", type = nametuple, action = "append", default = [ ], help = "When deliverables should be created, names the deliverables and the filenames they should be stored in, separated by colon. Can be specified multiple times to create multiple deliverables.")
 parser.add_argument("--debug-intermediate", action = "store_true", help = "For debugging purposes, write all intermediate renderings (such as individual layers) to own files.")
+parser.add_argument("-r", "--recursive", action = "store_true", help = "When giving directories as infiles, traverse them recursively, looking for files.")
 parser.add_argument("-v", "--verbose", action = "count", default = 0, help = "Increases verbosity. Can be specified multiple times to increase.")
-parser.add_argument("infile", metavar = "filename", type = str, nargs = "+", help = "Raw Gerber files that should be processed by gerberpeek")
+parser.add_argument("infile", metavar = "filename", type = str, nargs = "+", help = "Raw Gerber files that should be processed by gerberpeek. Can also supply ZIP files that will be searched internally or directories (if recursive operation is requested).")
 args = parser.parse_args(sys.argv[1:])
 
 # Parse renderscript
@@ -48,31 +50,30 @@ else:
 for script_filename in scripts:
 	renderscript.add_script(script_filename)
 for source_file in args.infile:
-	renderscript.add_source(source_file)
+	(base, ext) = os.path.splitext(source_file)
+	if os.path.isfile(source_file):
+		if ext.lower() != ".zip":
+			renderscript.add_source(source_file)
+		else:
+			renderscript.add_source_archive(source_file)
+	else:
+		if args.recursive:
+			for (basedir, subdirs, files) in os.walk(source_file):
+				for filename in files:
+					full_filename = basedir + "/" + filename
+					renderscript.add_source(full_filename)
+		else:
+			print("%s: Ignoring directory, no recursive action requested." % (source_file), file = sys.stderr)
 
 # Plausibilize deliverable names
 for (name, filename) in args.outfile:
 	if name not in renderscript.deliverable_names:
-		raise KeyError("Output deliverable '%s' requested, but not provided by render script %s. Script only provides %s." % (name, args.script, ", ".join(sorted(renderscript.deliverable_names))))
+		raise KeyError("Output deliverable '%s' requested, but not provided by render script %s. Script only provides %s." % (name, ", ".join(scripts), ", ".join(sorted(renderscript.deliverable_names))))
 
-# First pass determines the size of all files
-#size_cb = gerber.SizeDeterminationCallback()
-#for filename in args.infile:
-#	gerber.Interpreter(filename, size_cb).run()
-#dimensions = size_cb.max_pt - size_cb.min_pt
-#offset_in = size_cb.min_pt
-#dimension_in = size_cb.max_pt - size_cb.min_pt
-
-#if args.verbose >= 1:
-#	offset_mm = offset_in * 25.4
-#	dimension_mm = dimension_in * 25.4
-#	print("PCB offset   : %.3f / %.3f in (%.2f / %.2f mm)" % (offset_in.x, offset_in.y, offset_mm.x, offset_mm.y))
-#	print("PCB dimension: %.3f / %.3f in (%.2f / %.2f mm)" % (dimension_in.x, dimension_in.y, dimension_mm.x, dimension_mm.y))
-
-#renderscript.render("top_copper").write_to_png("1.png")
-#renderscript.render("top_soldermask").write_to_png("2.png")
-#renderscript.render("top_silkprint").write_to_png("3.png")
-
-#output = renderscript.render("top")
-#output = renderscript.render("bottom")
-output = renderscript.render("top")
+# Deliver the expected files
+for (name, filename) in args.outfile:
+	result = renderscript.render(name)
+	if result is not None:
+		result.write_to_png(filename)
+	else:
+		print("Warning: Could not create deliverable %s / %s." % (name, filename), file = sys.stderr)

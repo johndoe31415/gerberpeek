@@ -8,49 +8,56 @@
 	},
 	"steps": {
 		"top_copper_masked": {
-			"text": "Top Copper (traces)",
+			"text": "Top copper rendered masked (traces)",
 			"action": "render-gerber",
-			"file_regex": ".*\\.gtl",
+			"file_regex": ".*(\\.gtl|-F_Cu\\.gbr)",
 			"file_regex_opts": [ "ignore_case" ],
 			"color": "$color_soldermask"
 		},
 		"top_copper_exposed": {
-			"text": "Top Copper exposed (pads)",
+			"text": "Top copper rendered exposed (pads)",
 			"action": "render-gerber",
-			"file_regex": ".*\\.gtl",
+			"file_regex": ".*(\\.gtl|-F_Cu\\.gbr)",
 			"file_regex_opts": [ "ignore_case" ],
 			"color": "$color_pad"
 		},
 		"top_soldermask": {
-			"text": "Top Soldermask (areas where copper is exposed)",
+			"text": "Top soldermask (areas where copper is exposed)",
 			"action": "render-gerber",
-			"file_regex": ".*\\.gts",
+			"file_regex": ".*(\\.gts|-F_Mask\\.gbr)",
 			"file_regex_opts": [ "ignore_case" ],
 			"color": "#ff0000"
 		},
 		"top_silkprint": {
-			"text": "Top Silkprint",
+			"text": "Top silkprint",
 			"action": "render-gerber",
-			"file_regex": ".*\\.gto",
+			"file_regex": ".*(\\.gto|-F_SilkS\\.gbr)",
 			"file_regex_opts": [ "ignore_case" ],
 			"color": "$color_silkprint"
 		},
-		"bottom_copper": {
-			"text": "Bottom Copper (traces and pads)",
+		"bottom_copper_masked": {
+			"text": "Bottom copper rendered masked (traces)",
 			"action": "render-gerber",
 			"file_regex": ".*\\.gbl",
 			"file_regex_opts": [ "ignore_case" ],
 			"color": "$color_soldermask"
 		},
+		"bottom_copper_exposed": {
+			"text": "Bottom copper rendered exposed (pads)",
+			"action": "render-gerber",
+			"file_regex": ".*\\.gbl",
+			"file_regex_opts": [ "ignore_case" ],
+			"color": "$color_pad"
+		},
 		"bottom_soldermask": {
-			"text": "Bottom Soldermask (areas where copper is exposed)",
+			"text": "Bottom soldermask (areas where copper is exposed)",
 			"action": "render-gerber",
 			"file_regex": ".*\\.gbs",
 			"file_regex_opts": [ "ignore_case" ],
 			"color": "$color_pad"
 		},
 		"bottom_silkprint": {
-			"text": "Bottom Silkprint",
+			"text": "Bottom silkprint",
 			"action": "render-gerber",
 			"file_regex": ".*\\.gbo",
 			"file_regex_opts": [ "ignore_case" ],
@@ -59,7 +66,7 @@
 		"drill": {
 			"text": "Drill holes",
 			"action": "render-drill",
-			"file_regex": ".*\\.txt",
+			"file_regex": ".*\\.(drl|txt)",
 			"file_regex_opts": [ "ignore_case" ],
 			"color": "$color_drill"
 		},
@@ -69,6 +76,16 @@
 			"sources": [
 				{ "name": "top_copper_exposed" },
 				{ 	"name": "top_soldermask",
+					"operator": "dest-in"
+				}
+			]
+		},
+		"bottom_pads": {
+			"action": "compose",
+			"invert_y_axis": false,
+			"sources": [
+				{ "name": "bottom_copper_exposed" },
+				{ 	"name": "bottom_soldermask",
 					"operator": "dest-in"
 				}
 			]
@@ -88,8 +105,8 @@
 			"action": "compose",
 			"background": "$color_pcb",
 			"sources": [
-				{ "name": "bottom_copper" },
-				{ "name": "bottom_soldermask" },
+				{ "name": "bottom_copper_masked" },
+				{ "name": "bottom_pads" },
 				{ "name": "bottom_silkprint" },
 				{ "name": "drill" }
 			],

@@ -21,6 +21,9 @@
 import re
 import json
 import sys
+import collections
+import zipfile
+import tempfile
 from gerber import Vector2d, CairoContext, CairoCallback, Interpreter, DrillInterpreter, SizeDeterminationCallback
 
 class RenderscriptSyntaxError(Exception): pass
@@ -36,6 +39,7 @@ class Renderscript():
 		}
 		self._deliverable_names = None
 		self._sources = [ ]
+		self._source_archives = collections.OrderedDict()
 		self._deliverables = { }
 
 	def add_script(self, script_filename):
@@ -70,7 +74,7 @@ class Renderscript():
 			self._deliverable_names = set()
 			for (name, step) in self._script["steps"].items():
 				if step.get("deliverable"):
-					self._deliverable_names.add(step["deliverable"])
+					self._deliverable_names.add(name)
 		return iter(self._deliverable_names)
 
 	def add_definition(self, deffile):
@@ -78,8 +82,16 @@ class Renderscript():
 			definition = json.load(f)
 		print(definition)
 
+	def _list_zip_archive(self, archive_filename):
+		with zipfile.ZipFile(archive_filename) as zfile:
+			for info in zfile.infolist():
+				yield info.filename
+
 	def add_source(self, sourcefile):
 		self._sources.append(sourcefile)
+
+	def add_source_archive(self, source_archive):
+		self._source_archives[source_archive] = list(self._list_zip_archive(source_archive))
 
 	def _find_file(self, regex_str, regex_opts = None):
 		if regex_opts is None:
@@ -89,13 +101,22 @@ class Renderscript():
 			if regex_opt == "ignore_case":
 				flags |= re.IGNORECASE
 		regex = re.compile(regex_str, flags = flags)
+
+		# Search directly supplied files first
 		for filename in self._sources:
 			match = regex.fullmatch(filename)
 			if match:
-				return filename
-		else:
-			print("Warning: No source file found to match regex '%s'." % (regex_str))
-			return None
+				return (None, filename)
+
+		# Then search archive files
+		for (archive_filename, filenames) in self._source_archives.items():
+			for filename in filenames:
+				match = regex.fullmatch(filename)
+				if match:
+					return (archive_filename, filename)
+
+		print("Warning: No source file found to match regex '%s'." % (regex_str))
+		return (None, None)
 
 	def _replace_definitions(self, text):
 		for (name, value) in self._script["definitions"].items():
@@ -118,13 +139,7 @@ class Renderscript():
 				raise NotImplementedError(postproc_step)
 		return cctx
 
-	def _render_generic(self, step, interpreter_class):
-		infile = self._find_file(step["file_regex"], step.get("file_regex_opts"))
-		if infile is None:
-			return None
-		if self._args.verbose >= 2:
-			print("Rendering %s using %s" % (infile, interpreter_class.__name__), file = sys.stderr)
-
+	def _render_generic_file(self, step, interpreter_class, infile):
 		src_color = self._parse_color(self._replace_definitions(step.get("color", "#000000")))
 
 		# Determine dimensions first
@@ -150,6 +165,22 @@ class Renderscript():
 			cctx = self._apply_postprocess_steps(cctx, step["postprocess"])
 		return cctx
 
+	def _render_generic(self, step, interpreter_class):
+		(archive, infile) = self._find_file(step["file_regex"], step.get("file_regex_opts"))
+		if infile is None:
+			return None
+		if self._args.verbose >= 2:
+			print("Rendering %s [archive %s] using %s" % (infile, archive, interpreter_class.__name__), file = sys.stderr)
+
+		if archive is None:
+			return self._render_generic_file(step, interpreter_class, infile)
+		else:
+			# Extract to tempfile, then render
+			with tempfile.NamedTemporaryFile(prefix = "gerberpeek_", suffix = ".infile") as f, zipfile.ZipFile(archive) as zfile:
+				f.write(zfile.open(infile).read())
+				f.flush()
+				return self._render_generic_file(step, interpreter_class, f.name)
+
 	def _render_gerber(self, step):
 		return self._render_generic(step, Interpreter)
 
@@ -168,6 +199,9 @@ class Renderscript():
 					"source":	source,
 					"ctx":		sub_ctx,
 				})
+
+		if len(layers) == 0:
+			return None
 		cctx = CairoContext.create_composition_canvas([ layer["ctx"] for layer in layers ], invert_y_axis = step.get("invert_y_axis", True))
 		if "background" in step:
 			bg_color = self._parse_color(self._replace_definitions(step["background"]))

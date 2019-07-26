@@ -69,6 +69,7 @@ class Interpreter():
 		("M", re.compile(r"M(?P<m>\d+)\*")),
 		("load_polarity", re.compile(r"%LP(?P<pol>[CD])\*%")),
 		("not_implemented", re.compile(r"(?P<unknown_command>%.*)")),
+		("empty_command", re.compile(r"\*")),
 	)))
 	_CMD_RE = re.compile("(?P<cmdcode>[A-Z])(?P<parameter>-?[0-9]+)")
 
@@ -76,8 +77,8 @@ class Interpreter():
 		self._filename = filename
 		self._callback = callback
 		self._unit = None
-		self._interpolation = None
-		self._quadrantmode = None
+		self._interpolation = InterpolationMode.Linear
+		self._quadrantmode = QuadrantMode.MultiQuadrant
 		self._pos = None
 		self._precision = { "x": None, "y": None }
 		self._apertures = { }
@@ -117,9 +118,12 @@ class Interpreter():
 		elif self._unit == Unit.Inch:
 			return value
 		elif self._unit == Unit.MM:
-			return 25.4 * value
+			return value / 25.4
 		else:
 			raise NotImplementedError(self._unit)
+
+	def _match_empty_command(self, match):
+		pass
 
 	def _match_not_implemented(self, match):
 		print(match)

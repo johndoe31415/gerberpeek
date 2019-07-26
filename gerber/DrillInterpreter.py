@@ -36,16 +36,18 @@ class ValueInterpretation(enum.IntEnum):
 
 class DrillInterpreter():
 	_CMDS = MultiRegex(collections.OrderedDict((
+		("G", re.compile(r"G(?P<g>\d+)")),
 		("M", re.compile(r"M(?P<m>\d+)")),
 		("T", re.compile(r"T(?P<t>\d+)")),
-		("XY", re.compile(r"X(?P<x>\d+(\.\d+)?)Y(?P<y>\d+(\.\d+)?)")),
-		("X", re.compile(r"X(?P<x>\d+(\.\d+)?)")),
-		("Y", re.compile(r"Y(?P<y>\d+(\.\d+)?)")),
+		("XY", re.compile(r"X(?P<x>-?\d+(\.\d+)?)Y(?P<y>-?\d+(\.\d+)?)")),
+		("X", re.compile(r"X(?P<x>-?\d+(\.\d+)?)")),
+		("Y", re.compile(r"Y(?P<y>-?\d+(\.\d+)?)")),
 		("unit", re.compile(r"(?P<unit>INCH|METRIC)(,(?P<mode>LZ|\d+.\d+))?")),
 		("tooldef", re.compile(r"T(?P<t>\d+)(F(?P<f>\d+))?(S(?P<s>\d+))?C(?P<c>\d+(\.\d+)?)")),
 		("key_value", re.compile(r";(?P<key>[^=]+)=(?P<value>[^=]+)")),
 		("comment", re.compile(r";(?P<comment>.*)")),
 		("end_of_header", re.compile(r"%")),
+		("unknown", re.compile(r"(?P<unknown>FMAT.*)")),
 	)))
 
 	def __init__(self, filename, callback):
@@ -78,6 +80,14 @@ class DrillInterpreter():
 		else:
 			raise NotImplementedError(self._unit)
 
+	def _match_G(self, match):
+		g = int(match["g"])
+		if g == 5:
+			# Set drill mode.
+			pass
+		else:
+			print("Unexpected G in drill file: %d" % (g))
+
 	def _match_M(self, match):
 		m = int(match["m"])
 		if m == 48:
@@ -91,6 +101,9 @@ class DrillInterpreter():
 
 	def _match_comment(self, match):
 		pass
+
+	def _match_unknown(self, match):
+		print("Unknown: %s" % (match))
 
 	def _match_unit(self, match):
 		self._unit = Unit(match["unit"])
@@ -111,8 +124,11 @@ class DrillInterpreter():
 
 	def _match_T(self, match):
 		tool_id = int(match["t"])
-		active_tool = self._tools[tool_id]
-		self._callback.switch_drill_tool(active_tool)
+		if tool_id not in self._tools:
+			print("Warning: Tool %d requested, but no such tool defined previously in drill file. Ignoring tool change." % (tool_id))
+		else:
+			active_tool = self._tools[tool_id]
+			self._callback.switch_drill_tool(active_tool)
 
 	def _match_XY(self, match):
 		x = self._convert_coord(match["x"])

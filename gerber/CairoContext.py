@@ -121,13 +121,6 @@ class CairoContext():
 
 	def compose_onto(self, destination, operator = "over"):
 		target = self.offset
-
-#		saved_matrix = destination.cctx.get_matrix()
-#		matrix = cairo.Matrix()
-#		matrix.translate(-destination.offset.x, -destination.offset.y)
-#		matrix.translate(0, destination.height - self.height)
-#		destination.cctx.set_matrix(matrix)
-
 		destination.cctx.set_operator({
 			"over":		cairo.OPERATOR_OVER,
 			"xor":		cairo.OPERATOR_XOR,
@@ -139,7 +132,6 @@ class CairoContext():
 		}[operator])
 		destination.cctx.set_source_surface(self.surface, self.offset.x, self.offset.y)
 		destination.cctx.paint()
-#		destination.cctx.set_matrix(saved_matrix)
 
 	def compose_all(self, sources):
 		for source in sources:
@@ -211,15 +203,9 @@ class CairoContext():
 		for offset in range(0, len(self._surface.get_data()), 4):
 			alpha = data[offset + 3]
 			if alpha > threshold:
-				data[offset + 0] = 0x00
-				data[offset + 1] = 0x00
-				data[offset + 2] = 0xff
 				data[offset + 3] = 0xff
 			else:
 				data[offset + 0] = 0x00
-				data[offset + 1] = 0x00
-				data[offset + 2] = 0x00
-				data[offset + 3] = 0x00
 
 	def write_to_png(self, filename):
 		self._surface.write_to_png(filename)
