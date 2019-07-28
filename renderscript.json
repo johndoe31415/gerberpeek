@@ -63,6 +63,14 @@
 			"file_regex_opts": [ "ignore_case" ],
 			"color": "$color_silkprint"
 		},
+		"outline": {
+			"text": "Board outline/dimensions",
+			"action": "render-gerber",
+			"file_regex": ".*\\.gko",
+			"file_regex_opts": [ "ignore_case" ],
+			"color": "$color_pcb",
+			"background": "$color_pcb"
+		},
 		"drill": {
 			"text": "Drill holes",
 			"action": "render-drill",
@@ -92,8 +100,8 @@
 		},
 		"top": {
 			"action": "compose",
-			"background": "$color_pcb",
 			"sources": [
+				{ "name": "outline" },
 				{ "name": "top_copper_masked" },
 				{ "name": "top_pads" },
 				{ "name": "top_silkprint" },
@@ -103,8 +111,8 @@
 		},
 		"bottom": {
 			"action": "compose",
-			"background": "$color_pcb",
 			"sources": [
+				{ "name": "outline" },
 				{ "name": "bottom_copper_masked" },
 				{ "name": "bottom_pads" },
 				{ "name": "bottom_silkprint" },

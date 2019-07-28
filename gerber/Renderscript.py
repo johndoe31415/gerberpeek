@@ -155,7 +155,7 @@ class Renderscript():
 
 		cctx = CairoContext.create_inches(dimensions, offset_inches = size_cb.min_pt, dpi = self._args.resolution)
 		if "background" in step:
-			bg_color = self._parse_color(step["background"])
+			bg_color = self._parse_color(self._replace_definitions(step["background"]))
 			cctx.fill(bg_color)
 
 		callback = CairoCallback(cctx, src_color = src_color)
