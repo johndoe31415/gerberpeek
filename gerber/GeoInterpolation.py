@@ -60,6 +60,18 @@ class GeoInterpolation():
 	def circle(self, center, radius):
 		return self.arc(center, radius, from_rad = None, to_rad = None)
 
+	def path(self, path):
+		pos = None
+		for command in path:
+			if command.cmd == "moveto":
+				pos = command.coord
+			elif command.cmd == "lineto":
+				self.line(pos, command.coord)
+				pos = command.coord
+			else:
+				raise NotImplementedError(command.cmd)
+
+
 if __name__ == "__main__":
 
 	def print_coords(x):

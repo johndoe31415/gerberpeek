@@ -24,22 +24,28 @@ import collections
 from .CairoContext import CairoContext
 from .Vector2d import Vector2d
 from .ApertureRenderer import ApertureRenderer
+from .GeoInterpolation import GeoInterpolation
 
 class BaseCallback():
+	_MoveToCmd = collections.namedtuple("PathCommandMoveTo", [ "cmd", "coord" ])
+	_LineToCmd = collections.namedtuple("PathCommandLineTo", [ "cmd", "coord" ])
+	_ArcToCmd = collections.namedtuple("PathCommandArcTo", [ "cmd", "TODO" ])
+
 	def __init__(self):
-		pass
+		self._path = [ ]
 
 	def begin_path(self):
-		pass
+		self._path = [ ]
 
 	def region_move(self, point):
-		pass
+		self._path.append(self._MoveToCmd(cmd = "moveto", coord = point))
 
 	def region_line(self, point):
-		pass
+		self._path.append(self._LineToCmd(cmd = "lineto", coord = point))
 
 	def region_arc(self, TODO):
-		pass
+		self._path.append(self._ArcToCmd(cmd = "arcto", coord = point))
+		raise NotImplementedError("arcto")
 
 	def drawmode_clear(self):
 		pass
@@ -48,7 +54,7 @@ class BaseCallback():
 		pass
 
 	def end_path(self):
-		pass
+		self._path = [ ]
 
 	def close_contour(self):
 		pass
@@ -78,10 +84,6 @@ class BaseCallback():
 		pass
 
 class CairoCallback(BaseCallback):
-	_MoveToCmd = collections.namedtuple("PathCommandMoveTo", [ "cmd", "coord" ])
-	_LineToCmd = collections.namedtuple("PathCommandLineTo", [ "cmd", "coord" ])
-	_ArcToCmd = collections.namedtuple("PathCommandArcTo", [ "cmd", "TODO" ])
-
 	def __init__(self, cairo_context, src_color = None):
 		BaseCallback.__init__(self)
 		self._cctx = cairo_context
@@ -91,19 +93,6 @@ class CairoCallback(BaseCallback):
 			self._src_color = src_color
 		self._aperture = None
 		self._drill = None
-		self._path = [ ]
-
-	def begin_path(self):
-		self._path = [ ]
-
-	def region_move(self, point):
-		self._path.append(self._MoveToCmd(cmd = "moveto", coord = point))
-
-	def region_line(self, point):
-		self._path.append(self._LineToCmd(cmd = "lineto", coord = point))
-
-	def region_arc(self, TODO):
-		self._path.append(self._ArcToCmd(cmd = "arcto", coord = point))
 
 	def drawmode_clear(self):
 		self._cctx.set_mode_erase()
@@ -197,3 +186,11 @@ class SizeDeterminationCallback(BaseCallback):
 
 	def switch_drill_tool(self, diameter):
 		self._aperture = Vector2d(diameter, diameter) / 2
+
+	def end_path(self):
+		last_aperture = self._aperture
+		self._aperture = None
+		gip = GeoInterpolation(callback = self._add_point)
+		gip.path(self._path)
+		self._aperture = last_aperture
+		self._path = [ ]

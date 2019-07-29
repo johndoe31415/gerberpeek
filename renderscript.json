@@ -10,28 +10,28 @@
 		"top_copper_masked": {
 			"text": "Top copper rendered masked (traces)",
 			"action": "render-gerber",
-			"file_regex": ".*(\\.gtl|-F_Cu\\.gbr)",
+			"file_regex": ".*(\\.gtl|-F_Cu\\.gbr|_COPPER-TOP\\.gbr)",
 			"file_regex_opts": [ "ignore_case" ],
 			"color": "$color_soldermask"
 		},
 		"top_copper_exposed": {
 			"text": "Top copper rendered exposed (pads)",
 			"action": "render-gerber",
-			"file_regex": ".*(\\.gtl|-F_Cu\\.gbr)",
+			"file_regex": ".*(\\.gtl|-F_Cu\\.gbr|_COPPER-TOP\\.gbr)",
 			"file_regex_opts": [ "ignore_case" ],
 			"color": "$color_pad"
 		},
 		"top_soldermask": {
 			"text": "Top soldermask (areas where copper is exposed)",
 			"action": "render-gerber",
-			"file_regex": ".*(\\.gts|-F_Mask\\.gbr)",
+			"file_regex": ".*(\\.gts|-F_Mask\\.gbr|_SOLDERMASK-TOP\\.gbr)",
 			"file_regex_opts": [ "ignore_case" ],
 			"color": "#ff0000"
 		},
 		"top_silkprint": {
 			"text": "Top silkprint",
 			"action": "render-gerber",
-			"file_regex": ".*(\\.gto|-F_SilkS\\.gbr)",
+			"file_regex": ".*(\\.gto|-F_SilkS\\.gbr|_SILKSCREEN-TOP\\.gbr)",
 			"file_regex_opts": [ "ignore_case" ],
 			"color": "$color_silkprint"
 		},
@@ -103,8 +103,8 @@
 			"sources": [
 				{ "name": "outline" },
 				{ "name": "top_copper_masked" },
-				{ "name": "top_pads" },
 				{ "name": "top_silkprint" },
+				{ "name": "top_pads" },
 				{ "name": "drill" }
 			],
 			"deliverable": true
@@ -114,8 +114,8 @@
 			"sources": [
 				{ "name": "outline" },
 				{ "name": "bottom_copper_masked" },
-				{ "name": "bottom_pads" },
 				{ "name": "bottom_silkprint" },
+				{ "name": "bottom_pads" },
 				{ "name": "drill" }
 			],
 			"deliverable": true

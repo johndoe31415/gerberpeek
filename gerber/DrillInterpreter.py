@@ -42,7 +42,7 @@ class DrillInterpreter():
 		("XY", re.compile(r"X(?P<x>-?\d+(\.\d+)?)Y(?P<y>-?\d+(\.\d+)?)")),
 		("X", re.compile(r"X(?P<x>-?\d+(\.\d+)?)")),
 		("Y", re.compile(r"Y(?P<y>-?\d+(\.\d+)?)")),
-		("unit", re.compile(r"(?P<unit>INCH|METRIC)(,(?P<mode>LZ|\d+.\d+))?")),
+		("unit", re.compile(r"(?P<unit>INCH|METRIC)(,(?P<mode>LZ|TZ|\d+.\d+))?")),
 		("tooldef", re.compile(r"T(?P<t>\d+)(F(?P<f>\d+))?(S(?P<s>\d+))?C(?P<c>\d+(\.\d+)?)")),
 		("key_value", re.compile(r";(?P<key>[^=]+)=(?P<value>[^=]+)")),
 		("comment", re.compile(r";(?P<comment>.*)")),
