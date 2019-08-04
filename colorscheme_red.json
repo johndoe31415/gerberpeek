@@ -1,0 +1,6 @@
+{
+	"definitions": {
+		"color_pcb":			"#940204",
+		"color_soldermask":		"#dc0204"
+	}
+}

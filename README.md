@@ -1,6 +1,12 @@
 # gerberpeek
 gerberpeek is a renderer for RS-274X Gerber data used in printed circuit boards
 (PCBs). It uses pure Python and can be used to render Gerber data into PNGs.
+Here's an example of how that can look at 175 dpi:
+
+[![Example Rendering](https://raw.githubusercontent.com/johndoe31415/gerberpeek/master/docs/top_175.png)](https://johndoe31415.github.io/gerberpeek/)
+
+Some more rendered images [can be found on the documentation webpage.](https://johndoe31415.github.io/gerberpeek/)
+
 
 ## Usage
 First, a quick look at the help page:
