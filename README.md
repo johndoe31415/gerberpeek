@@ -79,5 +79,14 @@ $ ./gerberpeek -s renderscript.json -s colorscheme_blue.json -o top:top.png -o b
 Note that the order of the "--script" parameter is important, the later options
 override earlier specified ones.
 
+## Caveat
+Gerber is a rather messy format and I don't claim that gerberpeek is able to
+read and correctly interpret all Gerber files.  In fact, I've just implemented
+barely enough to properly show some Circuitmaker and KiCAD Gerber files. That
+said, many Gerber backends do not adhere to the specification fully and instead
+have custom clauses here and there that gerberpeek could choke on. If you have
+such a Gerber package, please open a ticket and submit all relevant files so I
+can have a look.
+
 ## License
 GNU-GPL 3.
