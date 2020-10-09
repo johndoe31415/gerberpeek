@@ -1,5 +1,5 @@
 #	gerberpeek - Render RS-274X Gerber files to image
-#	Copyright (C) 2019-2019 Johannes Bauer
+#	Copyright (C) 2019-2020 Johannes Bauer
 #
 #	This file is part of gerberpeek.
 #
@@ -66,6 +66,7 @@ class Interpreter():
 		("cmd", re.compile(r"(?P<cmds>[-GDXYIJ0-9]+)\*")),
 		("key_value", re.compile(r"G04 (?P<key>\w+)=(?P<value>\w+)\*")),
 		("comment", re.compile(r"G04\s(?P<comment>.*)\*")),
+		("parameter", re.compile(r"G04:(?P<key>\w+)|(?P<value>.*)")),
 		("M", re.compile(r"M(?P<m>\d+)\*")),
 		("load_polarity", re.compile(r"%LP(?P<pol>[CD])\*%")),
 		("not_implemented", re.compile(r"(?P<unknown_command>%.*)")),
@@ -127,6 +128,9 @@ class Interpreter():
 
 	def _match_not_implemented(self, match):
 		print(match)
+
+	def _match_parameter(self, match):
+		pass
 
 	def _match_img_polarity(self, match):
 		if match["pol"] != "POS":
@@ -257,7 +261,12 @@ class Interpreter():
 			# Flash
 			self._callback.flash_at(self._pos)
 		elif d >= 10:
-			self._callback.select_aperture(self._apertures[d])
+			if not d in self._apertures:
+				print("Warning: Missing aperture %d" % (d))
+				missing_aperture = ApertureDefinition(template = "C", params = (0.001, ))
+				self._callback.select_aperture(missing_aperture)
+			else:
+				self._callback.select_aperture(self._apertures[d])
 		else:
 			print(match)
 
