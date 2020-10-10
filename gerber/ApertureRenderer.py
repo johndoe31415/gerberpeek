@@ -1,5 +1,5 @@
 #	gerberpeek - Render RS-274X Gerber files to image
-#	Copyright (C) 2019-2019 Johannes Bauer
+#	Copyright (C) 2019-2020 Johannes Bauer
 #
 #	This file is part of gerberpeek.
 #
@@ -132,12 +132,29 @@ class ApertureRenderer():
 		return aperture
 
 	@classmethod
+	def from_macro_definition(cls, aperture_macro, dpi, color):
+		print("TODO: NOT IMPLEMENTED")
+		aperture = cls.generate_circular(5, color = color)
+		aperture.dpi = dpi
+		return aperture
+
+	@classmethod
 	def from_definition(cls, aperture_definition, dpi, color):
-		return cls.from_raw_definition(aperture_definition.template, aperture_definition.params, dpi, color)
+		if not aperture_definition.is_macro:
+			return cls.from_raw_definition(aperture_definition.template, aperture_definition.params, dpi, color)
+		else:
+			return cls.from_macro_definition(aperture_definition, dpi, color)
+
+	@classmethod
+	def physical_extents_macro(cls, aperture_macro):
+		print("TODO: NOT IMPLEMENTED")
+		return Vector2d(0.1, 0.1)
 
 	@classmethod
 	def physical_extents(cls, aperture_definition):
-		if aperture_definition.template == "C":
+		if aperture_definition.is_macro:
+			return cls.physical_extents_macro(aperture_definition)
+		elif aperture_definition.template == "C":
 			# Circular aperture
 			diameter_in = aperture_definition.params[0]
 			return Vector2d(diameter_in, diameter_in)

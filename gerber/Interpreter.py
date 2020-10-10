@@ -33,6 +33,16 @@ class Unit(enum.IntEnum):
 	Inch = 70
 	MM = 71
 
+class ApertureMacroPrimitiveCode(enum.IntEnum):
+	Comment = 0
+	Circle = 1
+	VectorLine = 20
+	CenterLine = 21
+	Outline = 4
+	Polygon = 5
+	Moire = 6
+	Thermal = 7
+
 class QuadrantMode(enum.IntEnum):
 	SingleQuadrant = 74
 	MultiQuadrant = 75
@@ -45,6 +55,10 @@ class ApertureDefinition():
 		self._params = params
 
 	@property
+	def is_macro(self):
+		return False
+
+	@property
 	def template(self):
 		return self._template
 
@@ -54,6 +68,49 @@ class ApertureDefinition():
 
 	def __repr__(self):
 		return "Aperture<%s, %s>" % (self._template, self._params)
+
+class ApertureMacro():
+	def __init__(self, name):
+		self._name = name
+		self._commands = [ ]
+
+	@property
+	def is_macro(self):
+		return True
+
+	def append(self, command):
+		self._commands.append(command)
+
+	@property
+	def name(self):
+		return self._name
+
+	@property
+	def commands(self):
+		return self._commands
+
+	def __iter__(self):
+		return iter(self._commands)
+
+	def __repr__(self):
+		return "ApertureMacro<%s: %s>" % (self.name, str(self.commands))
+
+class ApertureMacroCommand():
+	def __init__(self, primitive_code, parameters):
+		assert(isinstance(primitive_code, ApertureMacroPrimitiveCode))
+		self._primitive_code = primitive_code
+		self._parameters = parameters
+
+	@property
+	def primitive_code(self):
+		return self._primitive_code
+
+	@property
+	def parameters(self):
+		return self._parameters
+
+	def __repr__(self):
+		return "ApertureMacroCommand<%s, %s>" % (self.primitive_code.name, str(self.parameters))
 
 class Interpreter():
 	_CMDS = MultiRegex(collections.OrderedDict((
@@ -65,10 +122,13 @@ class Interpreter():
 		("offset", re.compile(r"%OFA(?P<a>\d+(\.\d+)?)B(?P<b>\d+(\.\d+)?)\*%")),
 		("cmd", re.compile(r"(?P<cmds>[-GDXYIJ0-9]+)\*")),
 		("key_value", re.compile(r"G04 (?P<key>\w+)=(?P<value>\w+)\*")),
-		("comment", re.compile(r"G04\s(?P<comment>.*)\*")),
-		("parameter", re.compile(r"G04:(?P<key>\w+)|(?P<value>.*)")),
+		("comment", re.compile(r"G04(?P<spacer>\s)?(?P<comment>.*)\*")),
 		("M", re.compile(r"M(?P<m>\d+)\*")),
 		("load_polarity", re.compile(r"%LP(?P<pol>[CD])\*%")),
+		("aperture_macro_start", re.compile(r"%AM(?P<name>[A-Za-z0-9]+)\*")),
+		("aperture_macro_definition", re.compile(r"(?P<params>[-.,0-9]+)\*")),
+		("aperture_macro_end", re.compile(r"%")),
+		("assign_aperture_macro", re.compile(r"%ADD(?P<d>\d{2})(?P<macro_name>[A-Za-z0-9]+)\*%")),
 		("not_implemented", re.compile(r"(?P<unknown_command>%.*)")),
 		("empty_command", re.compile(r"\*")),
 	)))
@@ -83,6 +143,8 @@ class Interpreter():
 		self._pos = None
 		self._precision = { "x": None, "y": None }
 		self._apertures = { }
+		self._aperture_macros = { }
+		self._current_aperture_macro = None
 		self._region = False
 		self._properties = { }
 
@@ -127,10 +189,23 @@ class Interpreter():
 		pass
 
 	def _match_not_implemented(self, match):
-		print(match)
+		print("Not implemented:", match)
 
-	def _match_parameter(self, match):
-		pass
+	def _match_aperture_macro_start(self, match):
+		self._current_aperture_macro = ApertureMacro(match["name"])
+		self._aperture_macros[self._current_aperture_macro.name] = self._current_aperture_macro
+
+	def _match_aperture_macro_definition(self, match):
+		args = match["params"].split(",")
+		primitive_code = ApertureMacroPrimitiveCode(int(args[0]))
+		parameters = args[1:]
+		self._current_aperture_macro.append(ApertureMacroCommand(primitive_code, parameters))
+
+	def _match_aperture_macro_end(self, match):
+		self._current_aperture_macro = None
+
+	def _match_assign_aperture_macro(self, match):
+		self._apertures[int(match["d"])] = self._aperture_macros[match["macro_name"]]
 
 	def _match_img_polarity(self, match):
 		if match["pol"] != "POS":
@@ -279,7 +354,7 @@ class Interpreter():
 			print(match)
 
 	def _match_comment(self, match):
-		print(match)
+		print("Comment:", match)
 
 	def _match_set_precision(self, match):
 		self._precision["x"] = (int(match["xi"]), int(match["xd"]))
