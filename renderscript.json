@@ -66,7 +66,7 @@
 		"outline": {
 			"text": "Board outline/dimensions",
 			"action": "render-gerber",
-			"file_regex": ".*\\.gko",
+			"file_regex": ".*\\.(gko|gm1)",
 			"file_regex_opts": [ "ignore_case" ],
 			"color": "$color_pcb",
 			"background": "$color_pcb"

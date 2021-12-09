@@ -1,5 +1,5 @@
 #	gerberpeek - Render RS-274X Gerber files to image
-#	Copyright (C) 2019-2020 Johannes Bauer
+#	Copyright (C) 2019-2021 Johannes Bauer
 #
 #	This file is part of gerberpeek.
 #
@@ -319,7 +319,7 @@ class Interpreter():
 		elif g == 37:
 			self._end_region()
 		else:
-			print(match)
+			print("Unsupported G:", g)
 
 	def _match_G(self, match):
 		self._execute_G(int(match["g1"]))
